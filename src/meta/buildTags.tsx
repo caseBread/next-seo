@@ -121,12 +121,14 @@ const buildTags = (config: BuildTagsParams) => {
 
   const noindex =
     config.noindex === undefined
-      ? defaults.noindex || config.dangerouslySetAllPagesToNoIndex
+      ? (typeof window !== 'undefined' && defaults.noindex) ||
+        config.dangerouslySetAllPagesToNoIndex
       : config.noindex;
 
   const nofollow =
     config.nofollow === undefined
-      ? defaults.nofollow || config.dangerouslySetAllPagesToNoFollow
+      ? (typeof window !== 'undefined' && defaults.nofollow) ||
+        config.dangerouslySetAllPagesToNoFollow
       : config.nofollow;
 
   const norobots = config.norobots || defaults.norobots;
