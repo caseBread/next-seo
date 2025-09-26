@@ -1,6 +1,21 @@
 import React, { ReactNode } from 'react';
 import { BuildTagsParams, OpenGraphMedia } from '../types';
-const defaults = {
+import { AsyncLocalStorage } from 'async_hooks';
+
+type Defaults = {
+  templateTitle: string;
+  noindex: boolean;
+  nofollow: boolean;
+  norobots: boolean;
+  defaultOpenGraphImageWidth: number;
+  defaultOpenGraphImageHeight: number;
+  defaultOpenGraphVideoWidth: number;
+  defaultOpenGraphVideoHeight: number;
+};
+
+const defaultsALS = new AsyncLocalStorage<Defaults>();
+
+const defaults: Defaults = {
   templateTitle: '',
   noindex: false,
   nofollow: false,
@@ -10,6 +25,17 @@ const defaults = {
   defaultOpenGraphVideoWidth: 0,
   defaultOpenGraphVideoHeight: 0,
 };
+
+export function setDefaults(values: Partial<Defaults>) {
+  const before = defaultsALS.getStore() ?? defaults;
+  const merged = { ...before, ...values };
+
+  defaultsALS.enterWith(merged);
+}
+
+export function getDefaults(): Defaults {
+  return defaultsALS.getStore() ?? defaults;
+}
 
 const buildOpenGraphMediaTags = (
   mediaType: 'image' | 'video' | 'audio',
@@ -102,14 +128,17 @@ const buildTags = (config: BuildTagsParams) => {
   const tagsToRender: ReactNode[] = [];
 
   if (config.titleTemplate) {
-    defaults.templateTitle = config.titleTemplate;
+    setDefaults({ templateTitle: config.titleTemplate });
   }
 
   let updatedTitle = '';
   if (config.title) {
     updatedTitle = config.title;
-    if (defaults.templateTitle) {
-      updatedTitle = defaults.templateTitle.replace(/%s/g, () => updatedTitle);
+    if (getDefaults().templateTitle) {
+      updatedTitle = getDefaults().templateTitle.replace(
+        /%s/g,
+        () => updatedTitle,
+      );
     }
   } else if (config.defaultTitle) {
     updatedTitle = config.defaultTitle;
@@ -121,17 +150,17 @@ const buildTags = (config: BuildTagsParams) => {
 
   const noindex =
     config.noindex === undefined
-      ? (typeof window !== 'undefined' && defaults.noindex) ||
+      ? (typeof window !== 'undefined' && getDefaults().noindex) ||
         config.dangerouslySetAllPagesToNoIndex
       : config.noindex;
 
   const nofollow =
     config.nofollow === undefined
-      ? (typeof window !== 'undefined' && defaults.nofollow) ||
+      ? (typeof window !== 'undefined' && getDefaults().nofollow) ||
         config.dangerouslySetAllPagesToNoFollow
       : config.nofollow;
 
-  const norobots = config.norobots || defaults.norobots;
+  const norobots = config.norobots || getDefaults().norobots;
 
   let robotsParams = '';
 
@@ -159,15 +188,15 @@ const buildTags = (config: BuildTagsParams) => {
   }
 
   if (config.norobots) {
-    defaults.norobots = true;
+    setDefaults({ norobots: true });
   }
 
   if (noindex || nofollow) {
     if (config.dangerouslySetAllPagesToNoIndex) {
-      defaults.noindex = true;
+      setDefaults({ noindex: true });
     }
     if (config.dangerouslySetAllPagesToNoFollow) {
-      defaults.nofollow = true;
+      setDefaults({ nofollow: true });
     }
 
     tagsToRender.push(
@@ -578,36 +607,44 @@ const buildTags = (config: BuildTagsParams) => {
 
     // images
     if (config.defaultOpenGraphImageWidth) {
-      defaults.defaultOpenGraphImageWidth = config.defaultOpenGraphImageWidth;
+      setDefaults({
+        defaultOpenGraphImageWidth: config.defaultOpenGraphImageWidth,
+      });
     }
 
     if (config.defaultOpenGraphImageHeight) {
-      defaults.defaultOpenGraphImageHeight = config.defaultOpenGraphImageHeight;
+      setDefaults({
+        defaultOpenGraphImageHeight: config.defaultOpenGraphImageHeight,
+      });
     }
 
     if (config.openGraph.images && config.openGraph.images.length) {
       tagsToRender.push(
         ...buildOpenGraphMediaTags('image', config.openGraph.images, {
-          defaultWidth: defaults.defaultOpenGraphImageWidth,
-          defaultHeight: defaults.defaultOpenGraphImageHeight,
+          defaultWidth: getDefaults().defaultOpenGraphImageWidth,
+          defaultHeight: getDefaults().defaultOpenGraphImageHeight,
         }),
       );
     }
 
     // videos
     if (config.defaultOpenGraphVideoWidth) {
-      defaults.defaultOpenGraphVideoWidth = config.defaultOpenGraphVideoWidth;
+      setDefaults({
+        defaultOpenGraphVideoWidth: config.defaultOpenGraphVideoWidth,
+      });
     }
 
     if (config.defaultOpenGraphVideoHeight) {
-      defaults.defaultOpenGraphVideoHeight = config.defaultOpenGraphVideoHeight;
+      setDefaults({
+        defaultOpenGraphVideoHeight: config.defaultOpenGraphVideoHeight,
+      });
     }
 
     if (config.openGraph.videos && config.openGraph.videos.length) {
       tagsToRender.push(
         ...buildOpenGraphMediaTags('video', config.openGraph.videos, {
-          defaultWidth: defaults.defaultOpenGraphVideoWidth,
-          defaultHeight: defaults.defaultOpenGraphVideoHeight,
+          defaultWidth: getDefaults().defaultOpenGraphVideoWidth,
+          defaultHeight: getDefaults().defaultOpenGraphVideoHeight,
         }),
       );
     }
